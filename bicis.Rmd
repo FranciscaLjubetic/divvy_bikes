@@ -1,0 +1,393 @@
+---
+title: "Bicicletas compartidas"
+author: "Francisca Ljubetic"
+date: "14-12-2023"
+output:
+html_document: default
+---
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+install.packages('tidyverse')
+install.packages('lubridate')
+install.packages('ggplot2')
+install.packages('dplyr')
+install.packages('geosphere')
+
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(dplyr)
+library(geosphere)
+
+#directorio_actual <- getwd()
+setwd("~/google datos/proyecto_bicicletas_light/clean_gdrive/comocsv")
+
+
+distancia <- function(lat1, long1, lat2, long2) {
+  
+  # Convertir grados a radianes
+  lat1_rad <- lat1 * pi / 180
+  long1_rad <- long1 * pi / 180
+  lat2_rad <- lat2 * pi / 180
+  long2_rad <- long2 * pi / 180
+
+  term1 <- sin(lat1_rad) * sin(lat2_rad)
+  term2 <- cos(lat1_rad) * cos(lat2_rad) * cos((long1_rad - long2_rad))
+
+  term1 <- ifelse(term1 < -1, -1, ifelse(term1 > 1, 1, term1))
+  term2 <- ifelse(term2 < -1, -1, ifelse(term2 > 1, 1, term2))
+
+  angulo <- acos(term1 + term2)
+
+  # earth radious
+  dist <- 6378.137 * angulo
+  return(dist)
+}
+
+
+add_dist <- function(data){
+  if (!all(c("start_lat", "start_lng", "end_lat", "end_lng") %in% names(data))) {
+    stop("El dataset no tiene las columnas necesarias.")
+  }
+  
+  data_con_dist <- data%>%
+  mutate(distance =as.numeric(distancia(start_lat, start_lng, end_lat, end_lng)))
+  return(data_con_dist)
+  
+}
+
+format_date <- function(string){
+  fecha_str <- string
+  fecha_hora <- mdy_hms(fecha_str, tz = "UTC")
+  anio <- lubridate::year(fecha_hora)
+}
+
+format_time <- function(inseconds){
+  duracion_en_segundos <- inseconds
+  periodo <- seconds_to_period(duracion_en_segundos)
+  horas <- as.integer(hour(periodo))
+  minutos <- as.integer(minute(periodo))
+  segundos <- as.integer(second(periodo))
+  duracion_formateada <- sprintf("%02d:%02d:%02d", horas, minutos, segundos)
+ 
+}
+
+generate_resume <- function(dataraw, dataname) {
+  data <- add_dist(dataraw)
+  resultados <- data %>%
+  mutate(started_at = as.POSIXct(started_at),  
+           year = lubridate::year(started_at),   
+           month = lubridate::month(started_at), 
+           ride_length = ifelse(is.na(ride_length), 0, ride_length))%>%  
+    group_by(year, month, WEEKDAY, member_casual, rideable_type) %>%
+    summarise(cantidad = n(),
+              avg_time_length = mean(ride_length),
+              max_time_length = max(ride_length),
+              min_time_length = min(ride_length),
+              median_time_length = median(ride_length),
+              avg_distance = mean(distance[is.finite(distance)]),
+              min_distance = min(distance[is.finite(distance)]),
+              max_distance = max(distance[is.finite(distance)]),
+              median_distance = median(distance[is.finite(distance)])
+              )%>%
+    mutate(
+      avg_time_length = format_time(avg_time_length),
+      max_time_length = format_time(max_time_length),
+      min_time_length = format_time(min_time_length),
+      median_time_length = format_time(median_time_length)
+    )
+  assign("res", resultados, envir = .GlobalEnv)
+  write.csv(resultados, paste0(dataname, Sys.Date(), ".csv"), row.names = FALSE)
+  print(resultados)
+}
+
+B202211 <- read_csv("202211.csv", col_types = cols(started_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ended_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ride_length = col_time(format = "%H:%M:%S")))
+
+generate_resume(B202211, "B202211_res")
+
+
+B202212 <- read_csv("202212.csv", col_types = cols(started_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ended_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ride_length = col_time(format = "%H:%M:%S")))
+
+generate_resume(B202212, "B202212_res")
+
+
+B202301 <- read_csv("202301.csv", col_types = cols(started_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ended_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ride_length = col_time(format = "%H:%M:%S")))
+
+generate_resume(B202301, "B202301_res")
+
+
+B202302 <- read_csv("202302.csv", col_types = cols(started_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ended_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ride_length = col_time(format = "%H:%M:%S")))
+
+generate_resume(B202302, "B202302_res")
+
+B202303 <- read_csv("202303.csv", col_types = cols(started_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ended_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ride_length = col_time(format = "%H:%M:%S")))
+
+generate_resume(B202303, "B202303_res")
+
+
+B202304 <- read_csv("202304.csv", col_types = cols(started_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ended_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ride_length = col_time(format = "%H:%M:%S")))
+
+generate_resume(B202304, "B202304_res")
+
+
+B202305 <- read_csv("202305.csv", col_types = cols(started_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ended_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ride_length = col_time(format = "%H:%M:%S")))
+
+generate_resume(B202305, "B202305_res")
+
+
+B202306 <- read_csv("202306.csv", col_types = cols(started_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ended_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ride_length = col_time(format = "%H:%M:%S")))
+
+generate_resume(B202306, "B202306_res")
+
+
+B202307 <- read_csv("202307.csv", col_types = cols(started_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ended_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ride_length = col_time(format = "%H:%M:%S")))
+
+generate_resume(B202307, "B202307_res")
+
+B202308 <- read_csv("202308.csv", col_types = cols(started_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ended_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ride_length = col_time(format = "%H:%M:%S")))
+
+generate_resume(B202308, "B202308_res")
+
+B202309 <- read_csv("202309.csv", col_types = cols(started_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ended_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ride_length = col_time(format = "%H:%M:%S")))
+
+generate_resume(B202309, "B202309_res")
+
+B202310 <- read_csv("202310.csv", col_types = cols(started_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ended_at = col_datetime(format = "%d/%m/%Y %H:%M:%S"), 
+    ride_length = col_time(format = "%H:%M:%S")))
+
+generate_resume(B202310, "B202310_res")
+
+setwd("~/google datos/proyecto_bicicletas_light/clean_gdrive/comocsv")
+c202211 <- read_csv("B202211_res2023-12-08.csv")
+c202212 <- read_csv("B202212_res2023-12-08.csv")
+c202301 <- read_csv("B202301_res2023-12-08.csv")
+c202302 <- read_csv("B202302_res2023-12-08.csv")
+c202303 <- read_csv("B202303_res2023-12-08.csv")
+c202304 <- read_csv("B202304_res2023-12-08.csv")
+c202305 <- read_csv("B202305_res2023-12-08.csv")
+c202306 <- read_csv("B202306_res2023-12-08.csv")
+c202307 <- read_csv("B202307_res2023-12-08.csv")
+c202308 <- read_csv("B202308_res2023-12-08.csv")
+c202309 <- read_csv("B202309_res2023-12-08.csv")
+c202310 <- read_csv("B202310_res2023-12-08.csv")
+
+colnames(c202212)
+colnames(c202301)
+colnames(c202302)
+colnames(c202303)
+colnames(c202304)
+colnames(c202305)
+colnames(c202306)
+colnames(c202307)
+colnames(c202308)
+colnames(c202309)
+colnames(c202310)
+
+#grafico de prueba para ilustrar cantidad de viajes segun dia de la semana y segun es member o casual
+ggplot(c202211, aes(x = WEEKDAY, y = cantidad, color = member_casual, group = member_casual)) +
+     geom_line(linewidth = 1) +
+     labs(title = 'Cantidades totales por DIA SEM',
+        x = "DIA SEM",
+       y = "Cantidades totales") +
+    scale_x_discrete(labels = c202211$WEEKDAY, breaks = c202211$WEEKDAY) +
+    scale_color_manual(values = c("casual" = "blue", "member" = "red")) +
+    theme_minimal()
+
+#juntar todos los dataframes en uno solo. Para eso, antes se debe haber instalado dplyr
+list_of_dataframes <- list(c202211 ,c202212 ,c202301 ,c202302 ,c202303 ,c202304 ,c202305 ,c202306 ,c202307 ,c202308 ,c202309 ,c202310 )  
+
+combined_df <- bind_rows(list_of_dataframes)
+write.csv(combined_df, paste0("all_trips", Sys.Date(), ".csv"), row.names = FALSE)
+colnames(combined_df)
+```
+
+# **Case: Chicago Rental Bykes** 🚲
+**Final Project, Google Data Analytics Certificate**
+Francisca Ljubetic, December 2023
+
+This paper has been created from authorized and free data. If required, folow this links:
+[Dataset](https://divvy-tripdata.s3.amazonaws.com/index.html) 
+[License](https://divvybikes.com/data-license-agreement)
+
+## **Business Task**
+Three questions guide the future marketing program:
+1. How do members (member) and casual riders (casual) differ with respect to their use of Cyclistic bicycles?
+2. Why would casual cyclists purchase Cyclistic annual memberships?
+3. How can Cyclistic use digital media to influence casual riders to become members?
+
+
+This paper attempts to answer the difference between member and casual users 
+
+### Data preparation:
+
+Firstly, I tried to process data by BigQuery because of its weight (some files weight more than 70MB). But saddly free tier was not able to aggregate required columns.
+
+Then, I tried to ake everything at POSIT. But again, sheets were to heavy.
+
+Finally I could process sheets first by googlesheets and then in my local Rstudio and it worked fine!!
+
+Once with light pivot sheets in hand, I could use POSIT to make figures and to publish this work.
+**GoogleSheets**
+
+    a.-upload every sheet to googlesheets
+    b.-check and clean empty values and compare colnames
+    c.-aggregate columns 'WEEKDAY'(formula) and 'ride_length'(D2-E2)
+    d.-add format 'duration'to 'ride_lenght' and 'datetime' to 'start_time'and 'end_time' 
+    e.-add format '00.000' to 'start_lat', 'start_lng', 'end_lat', 'end_lng'
+    f.-fill empty values related to 'end_lat' and 'end_lng' with a formula according to average distance of previous sheets (I didn't want to loose data and I realized this missing point were only a 0.01% of total, discardable in terms of distances and time, but maybe not regard bike types)
+    g.-download as csv
+**Rstudio**
+
+    h.-run each sheet under this R script in local Rstudio and unify into one dataframe (here are less R points, but I must confess 95% tasks were made in Rstudio) with aggregate columns related to mean, min, max and avg trip_distance and ride_lenght(time), always gruped by weekday, user type and bike type.
+    i.-take every summarise table to posit and analize
+
+## **Analysis**
+### Summary:
+The initial hypothesis is correct, member users use bicycles more often, for longer times per trip and also ride longer distances. However, this study is sensitive to the time of year where this gap is most noticeable, the day of the week, and also the type of bicycle that is most used by the user types.
+
+**A First approximation**
+After clean data, there were recognized:
+- 2 User types: member, casual
+- 3 types of rental bike: classic, electric and docked
+- 12 months betwwen November, 2022 and October 2023
+
+So, the first natural questions were:
+- How many trips are made by members and casual users during the months of the year under study?
+- What was the mode between weekdays?
+- What was the average distance and rental-time per trip each user type made during those 12 months?
+
+```{r}
+
+#directorio_actual <- getwd()
+setwd("~/google datos/proyecto_bicicletas_light/clean_gdrive/comocsv")
+
+#points per user type/month/day
+ggplot(combined_df, aes(x = factor(month, levels = c("11", "12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10")), y = cantidad, color = member_casual, group = member_casual)) +
+     geom_point(size = 1.5) +
+     labs(title = 'Total member and casual trip amount per month and day',
+      x = "Month",
+       y = "total amount") +
+    scale_x_discrete() +
+    scale_color_manual(values = c("casual" = "orange", "member" = "blue"))+
+    theme_minimal()+
+    facet_grid(~member_casual) 
+
+#line totals per month
+summarized_df <- combined_df %>%
+  group_by(month, member_casual) %>%
+  summarize(total_amount = sum(cantidad))
+
+# Crear el gráfico
+ggplot(summarized_df, aes(x = factor(month, levels = c("11", "12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10")), y = total_amount, color = member_casual, group = member_casual)) +
+  geom_line(size = 1.5) +
+  labs(title = 'Total member and casual trip amount per month',
+       x = "Month",
+       y = "Total Amount") +
+  scale_x_discrete() +
+  scale_y_continuous(labels = scales::label_number(scale = 1e-3, suffix = "K", accuracy = 0.1))+
+  #scale_color_manual(values = c("casual" = "orange", "member" = "blue")) +
+  theme_minimal()
+
+
+
+
+#line totals per weekday
+summarized_df <- combined_df %>%
+  group_by(WEEKDAY, member_casual) %>%
+  summarize(total_amount = sum(cantidad)) 
+
+summarized_df <- summarized_df %>%
+  mutate(weekday_name = factor(WEEKDAY, levels = 1:7, labels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")))
+
+# Crear el gráfico con formateo de etiquetas
+ggplot(summarized_df, aes(x = weekday_name, y = total_amount, color = member_casual, group = member_casual)) +
+  geom_line(size = 1.5) +
+  labs(title = 'Total member and casual trips amount per weekday',
+       x = "Weekday",
+       y = "Total Amount") +
+  scale_x_discrete() +
+  scale_y_continuous(labels = scales::label_number(scale = 1e-3, suffix = "K", accuracy = 0.1)) +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+#CANT/MONTH per byketype
+#points
+ggplot(combined_df, aes(x = factor(month, levels = c("11", "12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10")), y = cantidad, color = rideable_type, group = rideable_type)) +
+     geom_point(size = 1.5) +
+     labs(title = 'Total byke type trips amount per month and day',
+      x = "Month",
+      y = "total amount") +
+    scale_x_discrete() +
+    scale_color_manual(values = c("electric_bike" = "green","classic_bike" = "orange", "docked_bike" = "cyan")) +
+    theme_minimal()
+    
+#line totals per month
+summarized_df <- combined_df %>%
+  group_by(month, rideable_type) %>%
+  summarize(total_amount = sum(cantidad))
+
+# Crear el gráfico
+ggplot(summarized_df, aes(x = factor(month, levels = c("11", "12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10")), y = total_amount, color = rideable_type, group = rideable_type)) +
+  geom_line(size = 1.5) +
+  labs(title = 'Total bike types trips amount per month',
+       x = "Month",
+       y = "Total Amount") +
+  scale_x_discrete() +
+  scale_color_manual(values = c("electric_bike" = "green","classic_bike" = "orange", "docked_bike" = "cyan")) +
+  scale_y_continuous(labels = scales::label_number(scale = 1e-3, suffix = "K", accuracy = 0.1))+
+  theme_minimal()
+
+
+
+#line biketype totals per weekday
+summarized_df <- combined_df %>%
+  group_by(WEEKDAY, rideable_type) %>%
+  summarize(total_amount = sum(cantidad)) 
+
+summarized_df <- summarized_df %>%
+  mutate(weekday_name = factor(WEEKDAY, levels = 1:7, labels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")))
+
+# Crear el gráfico con formateo de etiquetas
+ggplot(summarized_df, aes(x = weekday_name, y = total_amount, color = rideable_type, group = rideable_type)) +
+  geom_line(size = 1.5) +
+  labs(title = 'Total rideable type trips amount per weekday',
+       x = "Weekday",
+       y = "Total Amount") +
+  scale_x_discrete() +
+  scale_color_manual(values = c("electric_bike" = "green","classic_bike" = "orange", "docked_bike" = "cyan")) +
+  scale_y_continuous(labels = scales::label_number(scale = 1e-3, suffix = "K", accuracy = 0.1)) +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+Second approach: How many trips are made by casual and member users per Weekday
