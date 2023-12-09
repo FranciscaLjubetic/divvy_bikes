@@ -1,0 +1,324 @@
+---
+title: "Bicicletas compartidas"
+author: "Francisca Ljubetic"
+date: "14-12-2023"
+output:
+html_document: default
+---
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+install.packages('tidyverse')
+install.packages('lubridate')
+install.packages('ggplot2')
+install.packages('dplyr')
+install.packages('geosphere')
+
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(dplyr)
+library(geosphere)
+
+#directorio_actual <- getwd()
+setwd("~/google datos/proyecto_bicicletas_light/clean_gdrive/comocsv")
+
+
+#grafico de prueba para ilustrar cantidad de viajes segun dia de la semana y segun es member o casual
+ggplot(c202211, aes(x = WEEKDAY, y = cantidad, color = member_casual, group = member_casual)) +
+     geom_line(linewidth = 1) +
+     labs(title = 'Total amount per weekday',
+        x = "DIA SEM",
+       y = "Cantidades totales") +
+    scale_x_discrete(labels = c202211$WEEKDAY, breaks = c202211$WEEKDAY) +
+    scale_color_manual(values = c("casual" = "blue", "member" = "red")) +
+    theme_minimal()
+
+combined_df <- read_csv("all_trips2023-12-08.csv")
+colnames(combined_df)
+```
+
+# **Case: Chicago Rental Bykes** 🚲
+**Final Project, Google Data Analytics Certificate**
+Francisca Ljubetic, December 2023
+
+This paper has been created from authorized and free data. If required, folow this links:
+[Dataset](https://divvy-tripdata.s3.amazonaws.com/index.html) 
+[License](https://divvybikes.com/data-license-agreement)
+
+## **Business Task**
+Three questions guide the future marketing program:
+1. How do members (member) and casual riders (casual) differ with respect to their use of Cyclistic bicycles?
+2. Why would casual cyclists purchase Cyclistic annual memberships?
+3. How can Cyclistic use digital media to influence casual riders to become members?
+
+
+This paper attempts to answer the difference between member and casual users 
+
+### Data preparation:
+
+Firstly, I tried to process data by BigQuery because of its weight (some files weight more than 70MB). But saddly free tier was not able to aggregate required columns.
+
+Then, I tried to ake everything at POSIT. But again, sheets were to heavy.
+
+Finally I could process sheets first by googlesheets and then in my local Rstudio and it worked fine!!
+
+Once with light pivot sheets in hand, I could use POSIT to make figures and to publish this work.
+[Complete and processes Dataset](https://github.com/FranciscaLjubetic/divvy_bikes/tree/main) 
+**GoogleSheets**
+
+    a.-upload every sheet to googlesheets
+    b.-check and clean empty values and compare colnames
+    c.-aggregate columns 'WEEKDAY'(formula) and 'ride_length'(D2-E2)
+    d.-add format 'duration'to 'ride_lenght' and 'datetime' to 'start_time'and 'end_time' 
+    e.-add format '00.000' to 'start_lat', 'start_lng', 'end_lat', 'end_lng'
+    f.-fill empty values related to 'end_lat' and 'end_lng' with a formula according to average distance of previous sheets (I didn't want to loose data and I realized this missing point were only a 0.01% of total, discardable in terms of distances and time, but maybe not regard bike types)
+    g.-download as csv
+**Rstudio**
+
+    h.-run each sheet under this R script in local Rstudio and unify into one dataframe (here are less R points, but I must confess 95% tasks were made in Rstudio) with aggregate columns related to mean, min, max and avg trip_distance and ride_lenght(time), always gruped by weekday, user type and bike type.
+    i.-take every summarise table to posit and analize
+
+## **Analysis**
+### Summary:
+The initial hypothesis is correct, member users use bicycles more often, for longer times per trip and also ride longer distances. However, this study is sensitive to the time of year where this gap is most noticeable, the day of the week, and also the type of bicycle that is most used by the user types.
+
+**A First approximation**
+After clean data, there were recognized:
+- 2 User types: member, casual
+- 3 types of rental bike: classic, electric and docked
+- 12 months betwwen November, 2022 and October 2023
+
+So, the first natural questions were:
+- How many trips are made by members and casual users during the months of the year under study?
+- What was the mode between weekdays?
+- What was the average distance and rental-time per trip each user type made during those 12 months?
+
+```{r}
+
+#directorio_actual <- getwd()
+setwd("~/google datos/proyecto_bicicletas_light/clean_gdrive/comocsv")
+
+#points per user type/month/day
+ggplot(combined_df, aes(x = factor(month, levels = c("11", "12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"), labels = c("Nov", "De", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct")), y = cantidad, color = member_casual, group = member_casual)) +
+     geom_point(size = 1.5) +
+     labs(title = 'Total member and casual trip amount per month and day',
+      x = "Month",
+       y = "total amount") +
+    scale_x_discrete() +
+    #scale_color_manual(values = c("casual" = "orange", "member" = "blue"))+
+    theme_minimal()+
+    facet_grid(~member_casual) 
+
+#line totals per month
+summarized_df <- combined_df %>%
+  group_by(month, member_casual) %>%
+  summarize(total_amount = sum(cantidad))
+
+# Crear el gráfico
+ggplot(summarized_df, aes(x = factor(month, levels = c("11", "12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"), labels = c("Nov", "De", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct")), y = total_amount, color = member_casual, group = member_casual)) +
+  geom_line(size = 1.5) +
+  labs(title = 'Total member and casual trip amount per month',
+       x = "Month",
+       y = "Total Amount") +
+  scale_x_discrete() +
+  scale_y_continuous(labels = scales::label_number(scale = 1e-3, suffix = "K", accuracy = 0.1))+
+  #scale_color_manual(values = c("casual" = "orange", "member" = "blue")) +
+  theme_minimal()
+
+
+#line totals per weekday
+summarized_df <- combined_df %>%
+  group_by(WEEKDAY, member_casual) %>%
+  summarize(total_amount = sum(cantidad)) 
+
+summarized_df <- summarized_df %>%
+  mutate(weekday_name = factor(WEEKDAY, levels = 1:7, labels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")))
+
+# Crear el gráfico con formateo de etiquetas
+ggplot(summarized_df, aes(x = weekday_name, y = total_amount, color = member_casual, group = member_casual)) +
+  geom_line(size = 1.5) +
+  labs(title = 'Total member and casual trips amount per weekday',
+       x = "Weekday",
+       y = "Total Amount") +
+  scale_x_discrete() +
+  scale_y_continuous(labels = scales::label_number(scale = 1e-3, suffix = "K", accuracy = 0.1)) +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+#CANT/MONTH per byketype
+#points
+ggplot(combined_df, aes(x = factor(month, levels = c("11", "12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"), labels = c("Nov", "De", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct")), y = cantidad, color = rideable_type, group = rideable_type)) +
+     geom_point(size = 1.5) +
+     labs(title = 'Total byke type trips amount per month and day',
+      x = "Month",
+      y = "total amount") +
+    scale_x_discrete() +
+    scale_color_manual(values = c("electric_bike" = "green","classic_bike" = "orange", "docked_bike" = "cyan")) +
+    theme_minimal()
+    
+#line totals per month
+summarized_df <- combined_df %>%
+  group_by(month, rideable_type) %>%
+  summarize(total_amount = sum(cantidad))
+
+# Crear el gráfico
+ggplot(summarized_df, aes(factor(month, levels = c("11", "12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"), labels = c("Nov", "De", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct")), y = total_amount, color = rideable_type, group = rideable_type)) +
+  geom_line(size = 1.5) +
+  labs(title = 'Total bike types trips amount per month',
+       x = "Month",
+       y = "Total Amount") +
+  scale_x_discrete() +
+  scale_color_manual(values = c("electric_bike" = "green","classic_bike" = "orange", "docked_bike" = "cyan")) +
+  scale_y_continuous(labels = scales::label_number(scale = 1e-3, suffix = "K", accuracy = 0.1))+
+  theme_minimal()
+
+
+
+#line biketype totals per weekday
+summarized_df <- combined_df %>%
+  group_by(WEEKDAY, rideable_type) %>%
+  summarize(total_amount = sum(cantidad)) 
+
+summarized_df <- summarized_df %>%
+  mutate(weekday_name = factor(WEEKDAY, levels = 1:7, labels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")))
+
+# Crear el gráfico con formateo de etiquetas
+ggplot(summarized_df, aes(x = weekday_name, y = total_amount, color = rideable_type, group = rideable_type)) +
+  geom_line(size = 1.5) +
+  labs(title = 'Total rideable type trips amount per weekday',
+       x = "Weekday",
+       y = "Total Amount") +
+  scale_x_discrete() +
+  scale_color_manual(values = c("electric_bike" = "green","classic_bike" = "orange", "docked_bike" = "cyan")) +
+  scale_y_continuous(labels = scales::label_number(scale = 1e-3, suffix = "K", accuracy = 0.1)) +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+#FIGURES RELATED RIDE_LENGTH AND RIDE_DISTANCES
+#AVG_DISTANCE PER month AND USER TYPE
+
+ggplot(combined_df, aes(x = factor(month, levels = c("11", "12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"), labels = c("Nov", "De", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct")), y = avg_distance, color = member_casual, group = member_casual)) +
+  geom_point(size = 1.5) +
+  labs(title = 'Average Distance per Month',
+       x = "Month",
+       y = "Average Distance") +
+  scale_x_discrete() +
+  #scale_color_manual(values = c("casual" = "orange", "member" = "blue")) +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+      facet_grid(~member_casual)
+
+#Total distances per month and user type
+total_distance_df <- combined_df %>%
+  group_by(month, member_casual) %>%
+  summarize(total_distance = sum(avg_distance* cantidad))
+
+ggplot(total_distance_df, aes(x = factor(month, levels = c("11", "12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"), labels = c("November", "December", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October")), y = total_distance, color = member_casual, group = member_casual)) +
+  geom_line(size = 1.5) +
+  labs(title = 'Total Distance per Month and User type',
+       x = "Month",
+       y = "Total Distance (kms)") +
+  scale_x_discrete() +
+  scale_y_continuous(labels = scales::label_number(scale = 1e-3, suffix = "K", accuracy = 1)) +
+  #scale_color_manual(values = c("casual" = "orange", "member" = "blue")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+#sum rental time PER MONTH AND user type
+total_time_df <- combined_df %>%
+  group_by(month, member_casual) %>%
+  summarize(total_time = sum(avg_time_length* cantidad))
+
+ggplot(total_time_df, aes(x = factor(month, levels = c("11", "12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"), labels = c("November", "December", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October")), y = total_time, color = member_casual, group = member_casual)) +
+  geom_line(size = 1.5) +
+  labs(title = 'Total Time per Month and User type',
+       x = "Month",
+       y = "Total time (hrs)") +
+  scale_x_discrete() +
+  scale_y_continuous(labels = scales::label_number(scale = 1/3600, suffix = " hrs")) +
+  #scale_y_continuous(labels = scales::label_number(scale = 1e-3, suffix = "K", accuracy = 1)) +
+  #scale_color_manual(values = c("casual" = "orange", "member" = "blue")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+
+
+
+#SUM RENTAL TIME PER WEEKDAY AND USER TYPE
+
+total_time_df <- combined_df %>%
+  group_by(WEEKDAY, member_casual) %>%
+  summarize(total_time = sum(avg_time_length* cantidad))
+
+summarized_df <- total_time_df %>%
+  mutate(weekday_name = factor(WEEKDAY, levels = 1:7, labels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")))
+
+ggplot(summarized_df, aes(x = weekday_name, y = total_time, color = member_casual, group = member_casual)) +
+  geom_line(size = 1.5) +
+  labs(title = 'Total Time per Weekday and User type',
+       x = "Weekday",
+       y = "Total time (hrs)") +
+  scale_x_discrete() +
+  scale_y_continuous(labels = scales::label_number(scale = 1/3600, suffix = " hrs")) +
+  #scale_y_continuous(labels = scales::label_number(scale = 1e-3, suffix = "K", accuracy = 1)) +
+  #scale_color_manual(values = c("casual" = "orange", "member" = "blue")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+
+
+#SUM RENTAL TIME PER MONTH AND BIKE TYPE
+
+total_time_df <- combined_df %>%
+  group_by(month, rideable_type) %>%
+  summarize(total_time = sum(avg_time_length* cantidad))
+
+ggplot(total_time_df, aes(x = factor(month, levels = c("11", "12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"), labels = c("November", "December", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October")), y = total_time, color = rideable_type, group = rideable_type)) +
+  geom_line(size = 1.5) +
+  labs(title = 'Total Time per Month and Bike type',
+       x = "Month",
+       y = "Total time (hrs)") +
+  scale_x_discrete() +
+  scale_y_continuous(labels = scales::label_number(scale = 1/3600, suffix = " hrs")) +
+  scale_color_manual(values = c("electric_bike" = "green","classic_bike" = "orange", "docked_bike" = "cyan")) +
+  #scale_y_continuous(labels = scales::label_number(scale = 1e-3, suffix = "K", accuracy = 1)) +
+  #scale_color_manual(values = c("casual" = "orange", "member" = "blue")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+
+
+
+#A STACKPILE RESUME WITH THE SUM RENTAL TIME, A PILE FOR MEMBER AND A PILE FOR CASUAL, PER MONTH, WITH BYKE TYPES STACKED INSIDE EACH BAR.
+combined_df <- combined_df %>%
+  mutate(avg_time_length_sec = as.numeric(avg_time_length))
+
+# Calcular total_time
+total_time_df <- combined_df %>%
+  group_by(month, member_casual, rideable_type) %>%
+  summarize(total_time = sum(avg_time_length_sec * cantidad))
+
+# Crear el gráfico
+ggplot(total_time_df, aes(x = factor(month), y = total_time, fill = rideable_type)) +
+  geom_bar(stat = "identity", position = "stack", color = "white") +
+  labs(title = 'Total Time per Month, User type, and Rideable type',
+       x = "Month",
+       y = "Total time (seconds)") +
+  scale_x_discrete(labels = c("Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct")) +
+  scale_fill_manual(values = c("electric_bike" = "green", "classic_bike" = "orange", "docked_bike" = "cyan")) +
+  scale_y_continuous(labels = scales::label_number(scale = 1/3600, suffix = " hrs")) +
+  facet_grid(~member_casual) +
+  #geom_text(aes(label = sprintf("%.2f Khrs", total_time / 3600)),
+            #position = position_stack(vjust = 0.5), color = "black", size = 3) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
