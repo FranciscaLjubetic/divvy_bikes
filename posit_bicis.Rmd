@@ -1,5 +1,5 @@
 ---
-title: "Bicicletas compartidas"
+title: "Divvy Rental Bikes"
 author: "Francisca Ljubetic"
 date: "14-12-2023"
 output:
@@ -7,49 +7,21 @@ html_document: default
 ---
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message=FALSE)
+options(warn = -1)
+
 ```
-
-
-```{r}
-install.packages('tidyverse')
-install.packages('lubridate')
-install.packages('ggplot2')
-install.packages('dplyr')
-install.packages('geosphere')
-
-library(tidyverse)
-library(lubridate)
-library(ggplot2)
-library(dplyr)
-library(geosphere)
-
-#directorio_actual <- getwd()
-setwd("~/google datos/proyecto_bicicletas_light/clean_gdrive/comocsv")
-
-
-#grafico de prueba para ilustrar cantidad de viajes segun dia de la semana y segun es member o casual
-ggplot(c202211, aes(x = WEEKDAY, y = cantidad, color = member_casual, group = member_casual)) +
-     geom_line(linewidth = 1) +
-     labs(title = 'Total amount per weekday',
-        x = "DIA SEM",
-       y = "Cantidades totales") +
-    scale_x_discrete(labels = c202211$WEEKDAY, breaks = c202211$WEEKDAY) +
-    scale_color_manual(values = c("casual" = "blue", "member" = "red")) +
-    theme_minimal()
-
-combined_df <- read_csv("all_trips2023-12-08.csv")
-colnames(combined_df)
-```
-
-# **Case: Chicago Rental Bykes** 🚲
+# **Case: Divvy Chicago Rental Bykes** 🚲
 **Final Project, Google Data Analytics Certificate**
 Francisca Ljubetic, December 2023
 
-This paper has been created from authorized and free data. If required, folow this links:
-[Dataset](https://divvy-tripdata.s3.amazonaws.com/index.html) 
-[License](https://divvybikes.com/data-license-agreement)
+This paper has been created from authorized and free data. If required, follow these links:
+- [Dataset](https://divvy-tripdata.s3.amazonaws.com/index.html) 
+- [License](https://divvybikes.com/data-license-agreement)
 
 ## **Business Task**
+This documents aims to highlight relevant points for Divvy's Cyclistic Rental Bikes future marketing program.  
+
 Three questions guide the future marketing program:
 1. How do members (member) and casual riders (casual) differ with respect to their use of Cyclistic bicycles?
 2. Why would casual cyclists purchase Cyclistic annual memberships?
@@ -60,14 +32,15 @@ This paper attempts to answer the difference between member and casual users
 
 ### Data preparation:
 
-Firstly, I tried to process data by BigQuery because of its weight (some files weight more than 70MB). But saddly free tier was not able to aggregate required columns.
+Firstly, I tried to process data with BigQuery, because of its weight (some files weight more than 70MB). But sadly free tier was not able to aggregate required new columns.
 
-Then, I tried to ake everything at POSIT. But again, sheets were to heavy.
+Then, I tried to bring everything here, to POSIT. But again, sheets were to heavy.
 
-Finally I could process sheets first by googlesheets and then in my local Rstudio and it worked fine!!
+Finally, I could process sheets first by googlesheets, and then at my local Rstudio and it worked fine!!
 
 Once with light pivot sheets in hand, I could use POSIT to make figures and to publish this work.
-[Complete and processes Dataset](https://github.com/FranciscaLjubetic/divvy_bikes/tree/main) 
+[Whole process- GitHub ](https://github.com/FranciscaLjubetic/divvy_bikes/tree/main) 
+
 **GoogleSheets**
 
     a.-upload every sheet to googlesheets
@@ -82,55 +55,80 @@ Once with light pivot sheets in hand, I could use POSIT to make figures and to p
     h.-run each sheet under this R script in local Rstudio and unify into one dataframe (here are less R points, but I must confess 95% tasks were made in Rstudio) with aggregate columns related to mean, min, max and avg trip_distance and ride_lenght(time), always gruped by weekday, user type and bike type.
     i.-take every summarise table to posit and analize
 
+
+```{r echo=FALSE}
+
+install.packages('tidyverse')
+install.packages('lubridate')
+install.packages('ggplot2')
+install.packages('dplyr')
+install.packages('geosphere')
+
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(dplyr)
+library(geosphere)
+
+#directorio_actual <- getwd()
+
+combined_df <- read_csv("all_trips2023-12-08.csv")
+#colnames(combined_df)
+```
+
+
 ## **Analysis**
 ### Summary:
-The initial hypothesis is correct, member users use bicycles more often, for longer times per trip and also ride longer distances. However, this study is sensitive to the time of year where this gap is most noticeable, the day of the week, and also the type of bicycle that is most used by the user types.
+The initial hypothesis is correct, member users use bicycles more often, for longer times per trip and also ride longer distances. However, this study is sensitive to the time of the year when this gap is most noticeable, the day of the week, and also the type of bicycle that is most used by the user types.
 
-**A First approximation**
+_A First approximation_
 After clean data, there were recognized:
-- 2 User types: member, casual
-- 3 types of rental bike: classic, electric and docked
-- 12 months betwwen November, 2022 and October 2023
+ - 2 User types: member, casual
+ - 3 types of rental bike: classic, electric and docked
+ - 12 months between November, 2022 and October 2023
 
-So, the first natural questions were:
+_the first natural questions were:_
 - How many trips are made by members and casual users during the months of the year under study?
 - What was the mode between weekdays?
 - What was the average distance and rental-time per trip each user type made during those 12 months?
 
-```{r}
+
+_How many trips take members and casual users in a year? How many daily? Does every month or every day per month register trips?_**_
+```{r echo=FALSE}
 
 #directorio_actual <- getwd()
-setwd("~/google datos/proyecto_bicicletas_light/clean_gdrive/comocsv")
 
-#points per user type/month/day
+#TRIPS PER DAY PER MONTH
 ggplot(combined_df, aes(x = factor(month, levels = c("11", "12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"), labels = c("Nov", "De", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct")), y = cantidad, color = member_casual, group = member_casual)) +
      geom_point(size = 1.5) +
-     labs(title = 'Total member and casual trip amount per month and day',
+     labs(title = 'Total Member and Casual trips amount per days in a month',
       x = "Month",
-       y = "total amount") +
+       y = "Total amount") +
     scale_x_discrete() +
     #scale_color_manual(values = c("casual" = "orange", "member" = "blue"))+
     theme_minimal()+
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))+
     facet_grid(~member_casual) 
-
-#line totals per month
+```
+But I realized it was better to manage the total amount of registered trips per month to have a cleaner and higher landscape first. Then, in order to detect different behaviors between members and casual users, I compare the total amount regard the weekday too. It came to light that casual users prefer to take trips on Friday, Saturday and Sunday (weekends), whereas Members describe a curve that ascends to Tuesday and Thursday, suggesting me that maybe members use Rental bikes to attend their jobs.
+```{r echo=FALSE}
+#TOTAL TRIPS PER MONTH AND USER MEMBERSHIP TYPE
 summarized_df <- combined_df %>%
   group_by(month, member_casual) %>%
   summarize(total_amount = sum(cantidad))
 
-# Crear el gráfico
-ggplot(summarized_df, aes(x = factor(month, levels = c("11", "12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"), labels = c("Nov", "De", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct")), y = total_amount, color = member_casual, group = member_casual)) +
+# Create aesthetic
+ggplot(summarized_df, aes(x = factor(month, levels = c("11", "12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"), labels = c("Nov", "Des", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct")), y = total_amount, color = member_casual, group = member_casual)) +
   geom_line(size = 1.5) +
-  labs(title = 'Total member and casual trip amount per month',
+  labs(title = 'Total Member and Casual trips amount per month',
        x = "Month",
        y = "Total Amount") +
   scale_x_discrete() +
   scale_y_continuous(labels = scales::label_number(scale = 1e-3, suffix = "K", accuracy = 0.1))+
-  #scale_color_manual(values = c("casual" = "orange", "member" = "blue")) +
   theme_minimal()
 
 
-#line totals per weekday
+#TOTAL TRIPS AMOUNT IN THE WEEK, PER MEMBER AND CASUAL
 summarized_df <- combined_df %>%
   group_by(WEEKDAY, member_casual) %>%
   summarize(total_amount = sum(cantidad)) 
@@ -138,10 +136,9 @@ summarized_df <- combined_df %>%
 summarized_df <- summarized_df %>%
   mutate(weekday_name = factor(WEEKDAY, levels = 1:7, labels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")))
 
-# Crear el gráfico con formateo de etiquetas
 ggplot(summarized_df, aes(x = weekday_name, y = total_amount, color = member_casual, group = member_casual)) +
   geom_line(size = 1.5) +
-  labs(title = 'Total member and casual trips amount per weekday',
+  labs(title = 'Total Member and Casual trips amount per weekday',
        x = "Weekday",
        y = "Total Amount") +
   scale_x_discrete() +
@@ -150,24 +147,33 @@ ggplot(summarized_df, aes(x = weekday_name, y = total_amount, color = member_cas
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 
+```
+Before continue, I decided to make the same exercise to compare totals, but now regard bike types in order to know how much each type was used the last year.
 
-#CANT/MONTH per byketype
+```{r echo=FALSE}
+
+#AMOUNT IN A MONTH, PER DAY OF DIFFERENT BIKE TYPES
 #points
 ggplot(combined_df, aes(x = factor(month, levels = c("11", "12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"), labels = c("Nov", "De", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct")), y = cantidad, color = rideable_type, group = rideable_type)) +
      geom_point(size = 1.5) +
-     labs(title = 'Total byke type trips amount per month and day',
+     labs(title = 'Total bike type trips amount per month and day',
       x = "Month",
-      y = "total amount") +
+      y = "Total Amount") +
     scale_x_discrete() +
     scale_color_manual(values = c("electric_bike" = "green","classic_bike" = "orange", "docked_bike" = "cyan")) +
     theme_minimal()
+
+```
+Here I could see than total amount lines regard user type and bike type join around two peaks: november and april, and two clear high (nov-apr) and low seasons (nov-apr). 
+
+```{r echo=FALSE}
     
 #line totals per month
 summarized_df <- combined_df %>%
   group_by(month, rideable_type) %>%
   summarize(total_amount = sum(cantidad))
 
-# Crear el gráfico
+#figure
 ggplot(summarized_df, aes(factor(month, levels = c("11", "12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"), labels = c("Nov", "De", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct")), y = total_amount, color = rideable_type, group = rideable_type)) +
   geom_line(size = 1.5) +
   labs(title = 'Total bike types trips amount per month',
@@ -180,7 +186,7 @@ ggplot(summarized_df, aes(factor(month, levels = c("11", "12", "1", "2", "3", "4
 
 
 
-#line biketype totals per weekday
+#BIKE TYPE PER WEEKDAY
 summarized_df <- combined_df %>%
   group_by(WEEKDAY, rideable_type) %>%
   summarize(total_amount = sum(cantidad)) 
@@ -188,10 +194,10 @@ summarized_df <- combined_df %>%
 summarized_df <- summarized_df %>%
   mutate(weekday_name = factor(WEEKDAY, levels = 1:7, labels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")))
 
-# Crear el gráfico con formateo de etiquetas
+# figure
 ggplot(summarized_df, aes(x = weekday_name, y = total_amount, color = rideable_type, group = rideable_type)) +
   geom_line(size = 1.5) +
-  labs(title = 'Total rideable type trips amount per weekday',
+  labs(title = 'Total rideable type trips amount in the week',
        x = "Weekday",
        y = "Total Amount") +
   scale_x_discrete() +
@@ -201,6 +207,10 @@ ggplot(summarized_df, aes(x = weekday_name, y = total_amount, color = rideable_t
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 
+```
+A took a last step to watch how long are the trips depending on user type. Surprisingly, in low season averages are prone to increase, and this curve repeats no matter the user type. Then I sum total distances traveled by each user type and I found the curve coheres with trips number curves. 
+
+```{r echo=FALSE}
 
 #FIGURES RELATED RIDE_LENGTH AND RIDE_DISTANCES
 #AVG_DISTANCE PER month AND USER TYPE
@@ -230,6 +240,12 @@ ggplot(total_distance_df, aes(x = factor(month, levels = c("11", "12", "1", "2",
   #scale_color_manual(values = c("casual" = "orange", "member" = "blue")) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+```
+It was not part of this exercise to know the commercial criteria. I explored distances and number of trips, but now was the turn for the time: renting time.  Surprisingly the bikes rental time at April´s peak is the same between casual members and users. No matter how many kilometers casual members traveled, they kept the bikes for a total mount of time equal to members. This fact was confirmed by the next figure which shows casual users "touch" members by the weekends.
+
+```{r echo=FALSE}
+
 
 #sum rental time PER MONTH AND user type
 total_time_df <- combined_df %>%
@@ -294,7 +310,10 @@ ggplot(total_time_df, aes(x = factor(month, levels = c("11", "12", "1", "2", "3"
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
 
 
+```
+Finally I opted to watch a comparative landscape of Bike rental times per user and per bike type.
 
+```{r echo=FALSE}
 
 #A STACKPILE RESUME WITH THE SUM RENTAL TIME, A PILE FOR MEMBER AND A PILE FOR CASUAL, PER MONTH, WITH BYKE TYPES STACKED INSIDE EACH BAR.
 combined_df <- combined_df %>%
@@ -319,6 +338,28 @@ ggplot(total_time_df, aes(x = factor(month), y = total_time, fill = rideable_typ
             #position = position_stack(vjust = 0.5), color = "black", size = 3) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
 ```
 
+
+
+
+### Conclusions
+
+Members and Casual users uses in a similar ratio bikes per season.
+
+There are to seasons clearly defined: 
+- High: November April
+- Low: May December 
+- It is recommended to investigate what happens between April and the lowest month, May. Then, to investigate how the weather could impact seasons, because the higher season is in winter.
+
+Rental time in weekends is the same for casual users and members. But members use more bikes during the workable week, while casual users use a little bit more in weekends
+
+Members almost do not use docked bikes, and the ratio per user type between electrical bike and classical bike is almost the same.
+
+Casual users take longer (in time) but fewer trips.
+
+Total members rental time is about 2 times casual users.
+
+Suggested gaps to solve are:
+- Increase members trips in weekends
+- Increase casual users to ride bikes in workable days, or transform them in members.
